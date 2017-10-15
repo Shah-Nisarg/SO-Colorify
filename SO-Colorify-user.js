@@ -163,29 +163,55 @@
         font-size: 25px;
       }
     `);
-
+  
+  	// Disables clicks on an element and its children.
+  	var elementsWithClickDisabled = [];
+  	$(document).on("click", ".question-hyperlink", function(event){ 
+	  	var questionID = $(this).parents(".question-summary")[0].id;
+	  	console.log(questionID, elementsWithClickDisabled);
+	  	if(elementsWithClickDisabled.indexOf(questionID) > -1) {
+			event.preventDefault();
+		}
+	});
+  
+  	function disableClicks (elem) {
+	  elementsWithClickDisabled.push(elem[0].id);
+	  
+	  console.log("disabling", elem[0].id);
+	}
+  
+  	function enableClicks (elem) {
+		var index = elementsWithClickDisabled.indexOf(elem[0].id);
+	  	if(index > -1){
+			elementsWithClickDisabled.splice(index, 1);	  
+		}
+	}
+ 
     // Apply blurs to questions containing blurrable tags.
     var blurrableTags = styleConfig.tags.filter(t => t.blur);
     var blurrableTagClasses = blurrableTags.map(t => t.className = "t-" + t.name.replace(".","û"));
     function applyBlur() {
         $(questionSelector).each(function(){
             var classes = $(this).find(tagsSelector).prop("classList");
-            console.log(classes);
             var blurQuestion = Array.from(classes).some(t => blurrableTagClasses.includes(t));
 
             if(blurQuestion) {
                 $(this).css("filter", "blur(3px)");
                 $(this).css("height", "10px");
-
+			  	
                 $(this).on("click", function(event) {
-                    if(event.altKey) {
+                    if(event.ctrlKey) {
 					  	$(this).css("height", "auto");
                         $(this).css("filter", "none");
-                    } else if(event.ctrlKey) {
+					  	enableClicks($(this));
+                    } else if(event.altKey) {
                         $(this).css("filter", "blur(3px)");
 					  	$(this).css("height", "10px");
+					  	disableClicks($(this));
                     }
                 });
+			  
+			  	disableClicks($(this));
             }
         });
     }
@@ -196,6 +222,18 @@
             applyBlur();
         }
     }
+
+    $(document).on("click", ".intellitab", function(event) {
+	  	setTimeout(function() {
+			applyBlur();
+		},100);
+    });
+
+	$(document).ajaxComplete(function( event, xhr, settings ) {
+		if (settings.url.toLowerCase().indexOf("/questions") > -1) {
+			applyBlur();
+		}
+	});
 
     setInterval(refresh, 2000);
     applyBlur();
