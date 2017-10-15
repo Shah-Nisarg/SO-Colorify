@@ -175,12 +175,15 @@
 
             if(blurQuestion) {
                 $(this).css("filter", "blur(3px)");
+                $(this).css("height", "10px");
 
                 $(this).on("click", function(event) {
                     if(event.altKey) {
+					  	$(this).css("height", "auto");
                         $(this).css("filter", "none");
                     } else if(event.ctrlKey) {
                         $(this).css("filter", "blur(3px)");
+					  	$(this).css("height", "10px");
                     }
                 });
             }
