@@ -29,7 +29,10 @@
 	function addTagStyle(style) {
 		// Remove if the style is already configured.
 		var sameTagStyles = tagStyles.filter(t => t.name == style.name);
-		sameTagStyles.forEach(t => tagStyles.splice(tagStyles.indexOf(style), 1));
+		if(sameTagStyles.length > 0) {
+			console.log("Removing styles: ", sameTagStyles, "For tag: ", style.name);
+			sameTagStyles.forEach(t => tagStyles.splice(tagStyles.indexOf(t), 1));
+		}
 		
 		// Add the style.
 		if(tagStyles) {
@@ -45,6 +48,7 @@
 		// Remove the style.
 		var sameTagStyles = tagStyles.filter(t => t.name == tagName);
 		if(sameTagStyles.length > 0) {
+			console.log("Removing styles: ", sameTagStyles, "For tag: ", tagName);
 			sameTagStyles.forEach(t => tagStyles.splice(tagStyles.indexOf(t), 1));
 		}
 		
@@ -316,7 +320,7 @@
 					}
 					
 					console.log("Saved changes!", tagName, bgcolor, color);
-					notify("Style changes saved successfully.", 3000);
+					// notify("Style changes saved successfully.", 3000);
 					
 					// Clear the custom CSS.
 					$("a.post-tag[href$='" + tagName+ "']").css("color", "");
