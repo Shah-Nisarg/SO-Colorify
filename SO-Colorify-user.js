@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Colorify
 // @namespace    SE-Colorify
-// @version      0.2
-// @description  Let's you give custom colors to tags.
+// @version      0.3
+// @description  Let's you give custom colors to tags and hide questions from evil tags.
 // @author       Nisarg Shah
 // @include      https://stackoverflow.com/*
 // @include      http*//*.stackoverflow.com/*
@@ -64,6 +64,30 @@
 		return tagStyle[0];
 	}
 	
+	function setBlurOnTag(tagName) {
+		var sameTagStyles = tagStyles.filter(t => t.name == tagName);
+		if(sameTagStyles.length > 0) {
+			sameTagStyles[0].blur = true;
+		} else {
+			var style = new TagStyle(tagName, "", "");
+			style.blur = true;
+			tagStyles.push(style);
+		}
+		
+		storage(storageKeys.allStyles, tagStyles);
+		console.log(tagStyles);
+	}
+	
+	function clearBlurFromTag(tagName) {
+		var sameTagStyles = tagStyles.filter(t => t.name == tagName);
+		if(sameTagStyles.length > 0) {
+			sameTagStyles[0].blur = false;
+		}
+		
+		storage(storageKeys.allStyles, tagStyles);
+		console.log(tagStyles);
+	}
+	
     function getStyles(tag) {
         var styles = "";
         Object.keys(tag).forEach(function(prop) {
@@ -100,7 +124,7 @@
 		// Calculate all styles to be injected.
 		allStyles.forEach(function(tag) {
 			// style += tagsSelector + " > a[href"+ (tag.selectorType || '$')+"='"+tag.name +"'] " +  "{ "+ getStyles(tag) +" }";
-			style += "a[href"+ (tag.selectorType || '$')+"='"+tag.name +"'].post-tag " +  "{ "+ getStyles(tag) +" }";
+			style += "a[href$='/"+tag.name +"'].post-tag " +  "{ "+ getStyles(tag) +" }";
 		});
 
 		var styleElement = GM_addStyle(style);
@@ -137,6 +161,20 @@
 		}
 	}
 	
+	function notifyInTagMenu(message, timeout) {
+		$("#tag-menu .blur-countdown").text(message);
+		
+		if(timeout) {
+			setTimeout(function() {
+				$("#tag-menu .blur-countdown").text("");	
+			}, timeout);
+		}
+	}
+	
+	function removeTagMenu() {
+		$("#tag-menu").remove();
+	}
+	
 	// Storage keys.
 	var storageKeys = {
 		"allStyles": "colorify-allStyles"
@@ -148,6 +186,7 @@
 		self.name = tagName;
 		self.bgcolor = bgcolor;
 		self.color = color;
+		self.blur = false;
 	};
 	
 	// Load the tag styles from storage.
@@ -190,41 +229,11 @@
 		}
 	];
 	
-  	// Disables clicks on an element and its children.
-  	var elementsWithClickDisabled = [];
-  	$(document).on("click", ".question-hyperlink", function(event){
-	  	var questionID = $(this).parents(".question-summary")[0].id;
-	  	console.log(questionID, elementsWithClickDisabled);
-	  	if(elementsWithClickDisabled.indexOf(questionID) > -1) {
-			event.preventDefault();
-		}
-	});
-
-  	function disableClicks (elem) {
-	  elementsWithClickDisabled.push(elem[0].id);
-
-	  console.log("disabling", elem[0].id);
-	}
-
-  	function enableClicks (elem) {
-		var index = elementsWithClickDisabled.indexOf(elem[0].id);
-	  	if(index > -1){
-			elementsWithClickDisabled.splice(index, 1);
-		}
-	}
-
-  	function injectTagControls() {
-		$("#content .tags").on("mouseover",".post-tag", function() {
-			console.log("Mouse inside tag area", $(this));
-
-			// The .tag-menu is loaded roughly 1 second later with an animation.
-		});
-	}
-
     // Apply blurs to questions containing blurrable tags.
-    var blurrableTags = tagStyles.filter(t => t.blur);
-    var blurrableTagClasses = blurrableTags.map(t => t.className = getTagClassByName(t.name));
     function applyBlur() {
+		var blurrableTags = tagStyles.filter(t => t.blur);
+    	var blurrableTagClasses = blurrableTags.map(t => t.className = getTagClassByName(t.name));
+    
 		var questionSelector = ".question-summary";
 		var tagsSelector = ".tags";
 		
@@ -233,23 +242,10 @@
             var blurQuestion = Array.from(classes).some(t => blurrableTagClasses.includes(t));
 
             if(blurQuestion) {
-                $(this).css("filter", "blur(3px)");
-                $(this).css("height", "10px");
-
-                $(this).on("click", function(event) {
-                    if(event.ctrlKey) {
-					  	$(this).css("height", "auto");
-                        $(this).css("filter", "none");
-					  	enableClicks($(this));
-                    } else if(event.altKey) {
-                        $(this).css("filter", "blur(3px)");
-					  	$(this).css("height", "10px");
-					  	disableClicks($(this));
-                    }
-                });
-
-			  	disableClicks($(this));
-            }
+				$(this).addClass("blurred");
+            } else {
+				$(this).removeClass("blurred");
+			}
         });
     }
 
@@ -292,10 +288,12 @@
 						"<a href='#' class='SE-colorify-link clear-changes'>Clear</a>" +
 						"<a href='#' class='SE-colorify-link set-random'>Random</a>" +
 						"<br />" +
-//						"<label class='SE-colorify-config'>" +
-//							"<input type='checkbox' class='blur-questions' />" +
-//							"Blur Questions" +
-//						"</label>" +
+						"<label class='SE-colorify-config'>" +
+							"<input type='checkbox' class='blur-questions' "+ ((currentTagStyle && currentTagStyle.blur) ? "checked='checked'" : "") +" />" +
+							"Blur Questions" +
+						"</label>" +
+						"&nbsp;&nbsp;&nbsp;&nbsp;" + 
+						"<span class='blur-countdown'></span>" + 
 					"</span>"
 			 	);
 
@@ -325,6 +323,8 @@
 					// Clear the custom CSS.
 					$("a.post-tag[href$='" + tagName+ "']").css("color", "");
 					$("a.post-tag[href$='" + tagName+ "']").css("background-color", "");
+					
+					notifyInTagMenu("Changes saved.", 3000);
 				});
 				
 				$("#tag-menu .SE-colorify .clear-changes").on("click",function(event) {
@@ -335,7 +335,7 @@
 					$(this).parent().find(".SE-colorify-color").val("");
 				 	$(this).parent().find(".SE-colorify-bgcolor").val("");	
 					
-					notify("Style changes cleared successfully.", 3000);
+					notifyInTagMenu("Style cleared.", 3000);
 				});
 				
 				$("#tag-menu .SE-colorify .set-random").on("click",function(event) {
@@ -350,6 +350,23 @@
 					$(this).parent().find(".save-changes").click();
 				});
 				
+				$("#tag-menu .SE-colorify .blur-questions").on("change",function(event) {
+					if($(this).prop("checked")) {
+						console.log("Blurring " + tagName);
+						setBlurOnTag(tagName);
+					} else {
+						console.log("Unblurring " + tagName);
+						clearBlurFromTag(tagName);
+					}
+					
+					setTimeout(function(){
+						removeTagMenu();
+						applyBlur();
+					}, 3000);
+					
+					notifyInTagMenu("Applying changes in 3 seconds.", 3000);
+				});
+				
 				setTimeout(function() {
 					var containerHeight = $("#tag-menu").parent().css("height");
 					$("#tag-menu").parent().css("height", (parseInt(containerHeight) + 52) + "px");
@@ -360,10 +377,6 @@
 
     setInterval(refresh, 2000);
     applyBlur();
-
-	// Inject various controls with the tags.
-	// setInterval(injectTagControls, 1000);
-	injectTagControls();
 	
 	GM_addStyle(`
 		.SE-colorify-label {
@@ -395,6 +408,23 @@
 
 		#tag-menu {
 			width: 338px;
+		}
+
+		.blur-countdown {
+			color: #eee;
+			font-size: 11px;
+		}
+
+		.question-summary {
+			transition: height,filter 0.5s 0.5s ease;
+		}
+
+		.question-summary.blurred {
+			filter: blur(3px);
+		}
+
+		.question-summary.blurred:hover {
+			filter: blur(0px);
 		}
 	`);
 })();
