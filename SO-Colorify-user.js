@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Colorify
 // @namespace    SE-Colorify
-// @version      0.3
+// @version      0.4
 // @description  Let's you give custom colors to tags and hide questions from evil tags.
 // @author       Nisarg Shah
 // @include      https://stackoverflow.com/*
@@ -64,13 +64,13 @@
 		return tagStyle[0];
 	}
 	
-	function setBlurOnTag(tagName) {
+	function setPropOnTag(tagName, prop) {
 		var sameTagStyles = tagStyles.filter(t => t.name == tagName);
 		if(sameTagStyles.length > 0) {
-			sameTagStyles[0].blur = true;
+			sameTagStyles[0][prop] = true;
 		} else {
 			var style = new TagStyle(tagName, "", "");
-			style.blur = true;
+			style[prop] = true;
 			tagStyles.push(style);
 		}
 		
@@ -78,10 +78,10 @@
 		console.log(tagStyles);
 	}
 	
-	function clearBlurFromTag(tagName) {
+	function clearPropFromTag(tagName, prop) {
 		var sameTagStyles = tagStyles.filter(t => t.name == tagName);
 		if(sameTagStyles.length > 0) {
-			sameTagStyles[0].blur = false;
+			sameTagStyles[0][prop] = false;
 		}
 		
 		storage(storageKeys.allStyles, tagStyles);
@@ -162,11 +162,11 @@
 	}
 	
 	function notifyInTagMenu(message, timeout) {
-		$("#tag-menu .blur-countdown").text(message);
+		$("#tag-menu .SO-colorify-message").text(message);
 		
 		if(timeout) {
 			setTimeout(function() {
-				$("#tag-menu .blur-countdown").text("");	
+				$("#tag-menu .SO-colorify-message").text("");	
 			}, timeout);
 		}
 	}
@@ -187,6 +187,7 @@
 		self.bgcolor = bgcolor;
 		self.color = color;
 		self.blur = false;
+		self.hide = false;
 	};
 	
 	// Load the tag styles from storage.
@@ -248,23 +249,45 @@
 			}
         });
     }
+	
+	function applyHide() {
+		var blurrableTags = tagStyles.filter(t => t.hide);
+    	var blurrableTagClasses = blurrableTags.map(t => t.className = getTagClassByName(t.name));
+    
+		var questionSelector = ".question-summary";
+		var tagsSelector = ".tags";
+		
+        $(questionSelector).each(function(){
+            var classes = $(this).find(tagsSelector).prop("classList");
+            var blurQuestion = Array.from(classes).some(t => blurrableTagClasses.includes(t));
+
+            if(blurQuestion) {
+				$(this).addClass("SO-colorify-hidden");
+            } else {
+				$(this).removeClass("SO-colorify-hidden");
+			}
+        });
+    }
 
     function refresh() {
         if($(".new-post-activity").length > 0) {
             $(".new-post-activity").click();
             applyBlur();
+			applyHide();
         }
     }
 
     $(document).on("click", ".intellitab", function(event) {
 	  	setTimeout(function() {
 			applyBlur();
+			applyHide();
 		},100);
     });
 
 	$(document).ajaxComplete(function( event, xhr, settings ) {
 		if (settings.url.toLowerCase().indexOf("/questions") > -1) {
 			applyBlur();
+			applyHide();
 		} else if(settings.url.toLowerCase().indexOf("/tags") > -1 && settings.url.toLowerCase().indexOf("/subscriber-info") > -1) {
 			var tagName = settings.url.toLowerCase().split("tags")[1].split("subscriber-info")[0].split("/").join("");
 			console.log("Current tag: " , tagName);
@@ -288,12 +311,17 @@
 						"<a href='#' class='SE-colorify-link clear-changes'>Clear</a>" +
 						"<a href='#' class='SE-colorify-link set-random'>Random</a>" +
 						"<br />" +
-						"<label class='SE-colorify-config'>" +
+						"<label class='SE-colorify-config' title='Blur Questions'>" +
 							"<input type='checkbox' class='blur-questions' "+ ((currentTagStyle && currentTagStyle.blur) ? "checked='checked'" : "") +" />" +
-							"Blur Questions" +
+							"Blur" +
 						"</label>" +
 						"&nbsp;&nbsp;&nbsp;&nbsp;" + 
-						"<span class='blur-countdown'></span>" + 
+						"<label class='SE-colorify-config' title='Hide Questions'>" +
+							"<input type='checkbox' class='hide-questions' "+ ((currentTagStyle && currentTagStyle.hide) ? "checked='checked'" : "") +" />" +
+							"Hide" +
+						"</label>" +
+						"&nbsp;&nbsp;&nbsp;&nbsp;" + 
+						"<span class='SO-colorify-message'></span>" + 
 					"</span>"
 			 	);
 
@@ -353,15 +381,32 @@
 				$("#tag-menu .SE-colorify .blur-questions").on("change",function(event) {
 					if($(this).prop("checked")) {
 						console.log("Blurring " + tagName);
-						setBlurOnTag(tagName);
+						setPropOnTag(tagName, "blur");
 					} else {
 						console.log("Unblurring " + tagName);
-						clearBlurFromTag(tagName);
+						clearPropFromTag(tagName, "blur");
 					}
 					
 					setTimeout(function(){
 						removeTagMenu();
 						applyBlur();
+					}, 3000);
+					
+					notifyInTagMenu("Applying changes in 3 seconds.", 3000);
+				});
+				
+				$("#tag-menu .SE-colorify .hide-questions").on("change",function(event) {
+					if($(this).prop("checked")) {
+						console.log("Hiding " + tagName);
+						setPropOnTag(tagName, "hide");
+					} else {
+						console.log("Showing " + tagName);
+						clearPropFromTag(tagName, "hide");
+					}
+					
+					setTimeout(function(){
+						removeTagMenu();
+						applyHide();
 					}, 3000);
 					
 					notifyInTagMenu("Applying changes in 3 seconds.", 3000);
@@ -377,6 +422,7 @@
 
     setInterval(refresh, 2000);
     applyBlur();
+	applyHide();
 	
 	GM_addStyle(`
 		.SE-colorify-label {
@@ -410,21 +456,31 @@
 			width: 338px;
 		}
 
-		.blur-countdown {
+		.SO-colorify-message,
+		.blur-questions,
+		.hide-questions {
 			color: #eee;
 			font-size: 11px;
 		}
 
 		.question-summary {
-			transition: height,filter 0.5s 0.5s ease;
+			transition: opacity 0.5s 0.5s ease;
 		}
 
 		.question-summary.blurred {
-			filter: blur(3px);
+			opacity: 0.1;
 		}
 
 		.question-summary.blurred:hover {
-			filter: blur(0px);
+			opacity: 1;
+		}
+
+		.SO-colorify-hidden {
+			height: 15px;
+		}
+
+		.SO-colorify-hidden:hover {
+			height: auto;
 		}
 	`);
 })();
