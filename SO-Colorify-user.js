@@ -251,6 +251,8 @@
     }
 	
 	function applyHide() {
+		console.log("Hiding stuff");
+		
 		var blurrableTags = tagStyles.filter(t => t.hide);
     	var blurrableTagClasses = blurrableTags.map(t => t.className = getTagClassByName(t.name));
     
@@ -269,17 +271,19 @@
         });
     }
 
-	$(".new-post-activity").on("click",function() {
-		applyBlur();
-		applyHide();
-	});
-
-    $(document).on("click", ".intellitab", function(event) {
-	  	setTimeout(function() {
+	$("#content").on("click", ".new-post-activity", function() {
+		setTimeout(function() {
 			applyBlur();
 			applyHide();
-		},100);
-    });
+		}, 1000);
+	});
+
+//    $(document).on("click", ".intellitab", function(event) {
+//	  	setTimeout(function() {
+//			applyBlur();
+//			applyHide();
+//		},100);
+//    });
 
 	$(document).ajaxComplete(function( event, xhr, settings ) {
 		if (settings.url.toLowerCase().indexOf("/questions") > -1) {
