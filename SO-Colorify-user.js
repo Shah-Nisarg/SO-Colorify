@@ -269,14 +269,6 @@
         });
     }
 
-	// OLD
-	// Used to auto refresh the questions.
-//    function refresh() {
-//        if($(".new-post-activity").length > 0) {
-//            $(".new-post-activity").click();
-//        }
-//    }
-	
 	$(".new-post-activity").on("click",function() {
 		applyBlur();
 		applyHide();
