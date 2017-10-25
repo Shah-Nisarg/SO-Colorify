@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Colorify
 // @namespace    SE-Colorify
-// @version      0.4
-// @description  Let's you give custom colors to tags and hide questions from evil tags.
+// @version      0.5
+// @description  Allows you to add colors to tags. Or, you can choose to blur or hide questions containing specific tags.
 // @author       Nisarg Shah
 // @include      https://stackoverflow.com/*
 // @include      http*//*.stackoverflow.com/*
@@ -269,13 +269,18 @@
         });
     }
 
-    function refresh() {
-        if($(".new-post-activity").length > 0) {
-            $(".new-post-activity").click();
-            applyBlur();
-			applyHide();
-        }
-    }
+	// OLD
+	// Used to auto refresh the questions.
+//    function refresh() {
+//        if($(".new-post-activity").length > 0) {
+//            $(".new-post-activity").click();
+//        }
+//    }
+	
+	$(".new-post-activity").on("click",function() {
+		applyBlur();
+		applyHide();
+	});
 
     $(document).on("click", ".intellitab", function(event) {
 	  	setTimeout(function() {
@@ -420,7 +425,6 @@
 		}
 	});
 
-    setInterval(refresh, 2000);
     applyBlur();
 	applyHide();
 	
