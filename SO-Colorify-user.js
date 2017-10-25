@@ -278,13 +278,6 @@
 		}, 1000);
 	});
 
-//    $(document).on("click", ".intellitab", function(event) {
-//	  	setTimeout(function() {
-//			applyBlur();
-//			applyHide();
-//		},100);
-//    });
-
 	$(document).ajaxComplete(function( event, xhr, settings ) {
 		if (settings.url.toLowerCase().indexOf("/questions") > -1) {
 			applyBlur();
